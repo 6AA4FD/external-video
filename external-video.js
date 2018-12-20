@@ -1,20 +1,20 @@
 var targetPages = [
-  "*://*.youtube.com/watch*",
-  "*://*.twitch.tv/*",
-  "*://*.vimeo.com/*",
-  "*://*.streamable.com/*",
-  "*://*.liveleak.com/view*",
-  "*://*.vid.me/*",
-  "*://*.funnyordie.com/videos/*",
-  "*://*.dailymotion.com/video/*"
+    "*://*.youtube.com/watch?*",
+    "*://*.twitch.tv/*",
+    "*://*.vimeo.com/*",
+    "*://*.streamable.com/*",
+    "*://*.liveleak.com/view*",
+    // "*://*.vid.me/*", // vidme is suspended
+    // "*://*.funnyordie.com/*", // youtube-dl returns unsupported for these
+    "*://*.dailymotion.com/video/*"
 ];
 
 var settings = {};
 var tabsLock = [];
 
 function openOriginal(info, tab) {
-  function onCreated(tab) {
-    tabsLock.push(tab.id);
+    function onCreated(tab) {
+        tabsLock.push(tab.id);
     browser.tabs.update(tab.id, {
       url: info.linkUrl
     });
@@ -34,28 +34,52 @@ function restoreSettings() {
 }
 
 function openInMpv(request) {
-  var lockedTabIndex = tabsLock.lastIndexOf(request.tabId);
-
-  function closeTab(data) {
-    if (!data.active) {
-      browser.tabs.remove(data.id);
+    if (!(request.type == "main_frame")) {
+        console.log("ignoring a background request");
+        return { cancel: false };
     }
-  }
 
-  if (request.type === "main_frame" && lockedTabIndex === -1) {
-    var command = `${request.url} --force-window=immediate ${settings.args}`;
+    var lockedTabIndex = tabsLock.lastIndexOf(request.tabId);
 
-    browser.runtime.sendNativeMessage("mpv", command);
+    if (!(lockedTabIndex == -1)) {
+        console.log("tab has been set to ignore")
+        return { cancel: false };
+    }
 
-    var querying = browser.tabs.get(request.tabId);
-    querying.then(closeTab);
+    console.log("new candidate:", request.url, "type is:", request.type);
 
-    browser.history.addUrl({
-      url: request.url
-    });
+    function closeTab(data) {
+        if (!data.active) {
+            browser.tabs.remove(data.id);
+        }
+    }
 
+    function mpvRun(data) {
+        var command = `${data.url} --force-window=immediate`;
+        console.log("running mpv", command);
+        browser.runtime.sendNativeMessage("mpv", command);
+
+        browser.history.addUrl({
+            url: data.url
+        });
+
+        var querying = browser.tabs.get(data.tabId);
+        querying.then(closeTab);
+    }
+
+    if (request.url == "https://www.twitch.tv/") {
+        console.log("this url is not a twitch stream");
+        return { cancel: false };
+    }
+
+    if (request.url.includes("twitch.tv/directory")) {
+        console.log("this candidate is not a twitch stream");
+        return { cancel: false };
+    }
+
+    console.log("running the supported url");
+    mpvRun(request);
     return { cancel: true };
-  }
 }
 
 chrome.contextMenus.create({
@@ -64,6 +88,10 @@ chrome.contextMenus.create({
   onclick: openOriginal,
   contexts: ["link"]
 });
+
+function logRequest(request){
+    console.log("opening ", request.url)
+}
 
 browser.storage.onChanged.addListener(restoreSettings);
 browser.webRequest.onBeforeRequest.addListener(openInMpv, { urls: targetPages }, ["blocking"]);
