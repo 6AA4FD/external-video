@@ -4,8 +4,6 @@ var targetPages = [
     "*://*.vimeo.com/*",
     "*://*.streamable.com/*",
     "*://*.liveleak.com/view*",
-    // "*://*.vid.me/*", // vidme is suspended
-    // "*://*.funnyordie.com/*", // youtube-dl returns unsupported for these
     "*://*.dailymotion.com/video/*"
 ];
 
@@ -34,20 +32,15 @@ function restoreSettings() {
 }
 
 function openInMpv(request) {
-    console.log("mainClose:", settings.mainClose);
     if (!(request.type == "main_frame")) {
-        console.log("ignoring a background request");
-            return { cancel: false };
-        }
+        return { cancel: false };
+    }
 
     var lockedTabIndex = tabsLock.lastIndexOf(request.tabId);
 
     if (!(lockedTabIndex == -1)) {
-        console.log("tab has been set to ignore")
         return { cancel: false };
     }
-
-    console.log("new candidate:", request.url, "type is:", request.type);
 
     function closeTab(data) {
         if (settings.mainClose) {
@@ -60,7 +53,6 @@ function openInMpv(request) {
 
     function mpvRun(data) {
         var command = `${data.url} --force-window=immediate`;
-        console.log("running mpv", command);
         browser.runtime.sendNativeMessage("mpv", command);
 
         browser.history.addUrl({
@@ -72,16 +64,13 @@ function openInMpv(request) {
     }
 
     if (request.url == "https://www.twitch.tv/") {
-        console.log("this url is not a twitch stream");
         return { cancel: false };
     }
 
     if (request.url.includes("twitch.tv/directory")) {
-        console.log("this candidate is not a twitch stream");
         return { cancel: false };
     }
 
-    console.log("running the supported url");
     mpvRun(request);
     return { cancel: true };
 }

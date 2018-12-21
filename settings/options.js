@@ -13,7 +13,6 @@ function restoreOptions() {
         document.querySelector("#args").value = result.args || "--pause --ytdl-format='bestvideo[height<=?1080]+bestaudio/best'";
   }
     function setMainClose(result) {
-        // console.log("mainclose is", result.mainClose);
         document.querySelector("#mainClose").checked = result.mainClose;
     }
 
