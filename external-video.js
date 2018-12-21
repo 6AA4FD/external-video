@@ -1,25 +1,25 @@
 var targetPages = [
-    "*://*.youtube.com/watch?*",
-    "*://*.twitch.tv/*",
-    "*://*.vimeo.com/*",
-    "*://*.streamable.com/*",
-    "*://*.liveleak.com/view*",
-    "*://*.dailymotion.com/video/*"
+  "*://*.youtube.com/watch?*",
+  "*://*.twitch.tv/*",
+  "*://*.vimeo.com/*",
+  "*://*.streamable.com/*",
+  "*://*.liveleak.com/view*",
+  "*://*.dailymotion.com/video/*"
 ];
 
 var settings = {};
 var tabsLock = [];
 
 function openOriginal(info, tab) {
-    function onCreated(tab) {
-        tabsLock.push(tab.id);
-        browser.tabs.update(tab.id, {
-            url: info.linkUrl
-        });
-    }
+  function onCreated(tab) {
+    tabsLock.push(tab.id);
+    browser.tabs.update(tab.id, {
+      url: info.linkUrl
+    });
+  }
 
-    var creating = browser.tabs.create({});
-    creating.then(onCreated);
+  var creating = browser.tabs.create({});
+  creating.then(onCreated);
 }
 
 function restoreSettings() {
@@ -27,52 +27,52 @@ function restoreSettings() {
     settings = data;
   }
 
-    var getting = browser.storage.local.get();
-    getting.then(setSettings);
+  var getting = browser.storage.local.get();
+  getting.then(setSettings);
 }
 
 function openInMpv(request) {
-    if (!(request.type == "main_frame")) {
-        return { cancel: false };
+  if (!(request.type == "main_frame")) {
+    return { cancel: false };
+  }
+
+  var lockedTabIndex = tabsLock.lastIndexOf(request.tabId);
+
+  if (!(lockedTabIndex == -1)) {
+    return { cancel: false };
+  }
+
+  function closeTab(data) {
+    if (settings.mainClose) {
+      browser.tabs.remove(data.id);
     }
-
-    var lockedTabIndex = tabsLock.lastIndexOf(request.tabId);
-
-    if (!(lockedTabIndex == -1)) {
-        return { cancel: false };
+    if (!data.active) {
+      browser.tabs.remove(data.id);
     }
+  }
 
-    function closeTab(data) {
-        if (settings.mainClose) {
-            browser.tabs.remove(data.id);
-        }
-        if (!data.active) {
-            browser.tabs.remove(data.id);
-        }
-    }
+  function mpvRun(data) {
+    var command = `${data.url} --force-window=immediate`;
+    browser.runtime.sendNativeMessage("mpv", command);
 
-    function mpvRun(data) {
-        var command = `${data.url} --force-window=immediate`;
-        browser.runtime.sendNativeMessage("mpv", command);
+    browser.history.addUrl({
+      url: data.url
+    });
 
-        browser.history.addUrl({
-            url: data.url
-        });
+    var querying = browser.tabs.get(data.tabId);
+    querying.then(closeTab);
+  }
 
-        var querying = browser.tabs.get(data.tabId);
-        querying.then(closeTab);
-    }
+  if (request.url == "https://www.twitch.tv/") {
+    return { cancel: false };
+  }
 
-    if (request.url == "https://www.twitch.tv/") {
-        return { cancel: false };
-    }
+  if (request.url.includes("twitch.tv/directory")) {
+    return { cancel: false };
+  }
 
-    if (request.url.includes("twitch.tv/directory")) {
-        return { cancel: false };
-    }
-
-    mpvRun(request);
-    return { cancel: true };
+  mpvRun(request);
+  return { cancel: true };
 }
 
 chrome.contextMenus.create({
