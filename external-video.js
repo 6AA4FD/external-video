@@ -15,13 +15,13 @@ var tabsLock = [];
 function openOriginal(info, tab) {
     function onCreated(tab) {
         tabsLock.push(tab.id);
-    browser.tabs.update(tab.id, {
-      url: info.linkUrl
-    });
-  }
+        browser.tabs.update(tab.id, {
+            url: info.linkUrl
+        });
+    }
 
-  var creating = browser.tabs.create({});
-  creating.then(onCreated);
+    var creating = browser.tabs.create({});
+    creating.then(onCreated);
 }
 
 function restoreSettings() {
@@ -29,15 +29,16 @@ function restoreSettings() {
     settings = data;
   }
 
-  var getting = browser.storage.local.get();
-  getting.then(setSettings);
+    var getting = browser.storage.local.get();
+    getting.then(setSettings);
 }
 
 function openInMpv(request) {
+    console.log("mainClose:", settings.mainClose);
     if (!(request.type == "main_frame")) {
         console.log("ignoring a background request");
-        return { cancel: false };
-    }
+            return { cancel: false };
+        }
 
     var lockedTabIndex = tabsLock.lastIndexOf(request.tabId);
 
@@ -49,6 +50,9 @@ function openInMpv(request) {
     console.log("new candidate:", request.url, "type is:", request.type);
 
     function closeTab(data) {
+        if (settings.mainClose) {
+            browser.tabs.remove(data.id);
+        }
         if (!data.active) {
             browser.tabs.remove(data.id);
         }
