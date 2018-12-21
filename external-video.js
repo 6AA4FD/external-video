@@ -89,10 +89,6 @@ chrome.contextMenus.create({
   contexts: ["link"]
 });
 
-function logRequest(request){
-    console.log("opening ", request.url)
-}
-
 browser.storage.onChanged.addListener(restoreSettings);
 browser.webRequest.onBeforeRequest.addListener(openInMpv, { urls: targetPages }, ["blocking"]);
 
